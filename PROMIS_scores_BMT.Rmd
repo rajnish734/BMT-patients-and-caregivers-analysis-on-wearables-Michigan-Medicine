@@ -1,0 +1,526 @@
+---
+title: "PROMIS_scores_BMT"
+author: "Rajnish Kumar"
+date: "2024-08-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+library(readr)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+Get all the IDs in the patient/caregiver set. 
+
+```{r}
+IDs <- read.csv('C:\\Users\\rajnishk\\University of Michigan Dropbox\\Rajnish Kumar\\Rajnish_data_group\\R_codes_BMT\\Roadmap 2.0 BMT_roadmapIDs_10.11.2023.csv')
+IDs_adult_cohort <- IDs %>% filter(cohort != "Peds")
+IDs_adult_cohort_all <- na.omit(IDs_adult_cohort, cols = c("pt_rm_access_code", "cg_rm_access_code"))
+
+```
+
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+Get all the PROMIS scores
+```{r}
+# Load required libraries
+
+#
+# # Set the main folder path
+# main_folder <- "C:/Users/rajnishk/University of Michigan Dropbox/Rajnish Kumar/Rajnish_data_group/R_codes_BMT/PROMIS table uploaded"
+#
+# # Define subfolders
+# subfolders <- c("CG", "PAT")
+#
+# # Function to read CSV files
+# read_csv_file <- function(file_path, group) {
+#   # Extract file name without extension
+#   file_name <- tools::file_path_sans_ext(basename(file_path))
+#
+#   # Read the CSV file, skipping the first 4 rows
+#   df <- read_csv(file_path, skip = 4, col_names = TRUE)
+#
+#   # Create the data frame name
+#   df_name <- paste0(file_name, "_", group)
+#
+#   # Assign the data frame to the global environment
+#   assign(df_name, df, envir = .GlobalEnv)
+#
+#   # Return the name for reference
+#   return(df_name)
+# }
+#
+# # List to store all created data frame names
+# all_dfs <- list()
+#
+# # Loop through each subfolder
+# for (subfolder in subfolders) {
+#   # Construct the full path to the subfolder
+#   folder_path <- file.path(main_folder, subfolder)
+#
+#   # Get all CSV files in the subfolder
+#   csv_files <- list.files(folder_path, pattern = "\\.csv$", full.names = TRUE)
+#
+#   # Read each CSV file and create a data frame
+#   for (file in csv_files) {
+#     df_name <- read_csv_file(file, subfolder)
+#     all_dfs <- c(all_dfs, df_name)
+#   }
+# }
+
+# Print the names of all created data frames
+# print(all_dfs)
+
+# Set the main folder path
+main_folder <- "C:/Users/rajnishk/University of Michigan Dropbox/Rajnish Kumar/Rajnish_data_group/R_codes_BMT/PROMIS table uploaded"
+
+# Define subfolders
+subfolders <- c("CG", "PAT")
+
+# Function to read CSV files
+read_csv_file <- function(file_path, group) {
+  # Extract file name without extension
+  file_name <- tools::file_path_sans_ext(basename(file_path))
+
+  # Read the CSV file, skipping the first 4 rows
+  df <- read_csv(file_path, skip = 4, col_names = TRUE)
+
+  # Create the data frame name
+  df_name <- paste0(file_name, "_", group)
+
+  # Assign the data frame to the global environment
+  assign(df_name, df, envir = .GlobalEnv)
+
+  # Return the name for reference
+  return(df_name)
+}
+
+# List to store all created data frame names
+all_dfs <- list()
+
+# Loop through each subfolder
+for (subfolder in subfolders) {
+  # Construct the full path to the subfolder
+  folder_path <- file.path(main_folder, subfolder)
+
+  # Get all CSV files in the subfolder
+  csv_files <- list.files(folder_path, pattern = "\\.csv$", full.names = TRUE)
+
+  # Read each CSV file and create a data frame
+  for (file in csv_files) {
+    df_name <- read_csv_file(file, subfolder)
+    all_dfs <- c(all_dfs, df_name)
+  }
+}
+
+# Print the names of all created data frames
+print(all_dfs)
+
+```
+
+```{r}
+# Function to print column names of a data frame
+print_column_names <- function(df_name) {
+  df <- get(df_name, envir = .GlobalEnv)
+  cat("\nColumn names for", df_name, ":\n")
+  print(colnames(df))
+}
+
+# Print column names for each data frame
+for (df_name in all_dfs) {
+  print_column_names(df_name)
+}
+```
+
+```{r}
+
+# Set the main folder path
+main_folder <- "C:/Users/rajnishk/University of Michigan Dropbox/Rajnish Kumar/Rajnish_data_group/R_codes_BMT/PROMIS table uploaded"
+
+# Define subfolders
+subfolders <- c("CG", "PAT")
+
+# Function to read CSV files
+read_csv_file <- function(file_path, group) {
+  # Extract file name without extension
+  file_name <- tools::file_path_sans_ext(basename(file_path))
+  
+  # Read the CSV file, skipping the first 4 rows
+  df <- read_csv(file_path, skip = 4, col_names = TRUE)
+  
+  # Create the data frame name
+  df_name <- paste0(file_name, "_", group)
+  
+  # Add a new column with the data frame name
+  df <- df %>% mutate(Source = df_name)
+  
+  # Return the data frame
+  return(df)
+}
+
+# List to store all data frames
+all_dfs <- list()
+
+# Loop through each subfolder
+for (subfolder in subfolders) {
+  # Construct the full path to the subfolder
+  folder_path <- file.path(main_folder, subfolder)
+  
+  # Get all CSV files in the subfolder
+  csv_files <- list.files(folder_path, pattern = "\\.csv$", full.names = TRUE)
+  
+  # Read each CSV file and add to the list
+  for (file in csv_files) {
+    df <- read_csv_file(file, subfolder)
+    all_dfs <- c(all_dfs, list(df))
+  }
+}
+
+# Combine all data frames into one
+PROMIS_combined_df <- bind_rows(all_dfs)
+
+# Print the structure of the combined data frame
+str(PROMIS_combined_df)
+
+# Print the first few rows of the combined data frame
+print(head(PROMIS_combined_df))
+
+# Print unique values in the Source column
+print(unique(PROMIS_combined_df$Source))
+
+```
+I will write a separate code later to check whether each of the data frames read individually are same as the members present 
+
+
+```{r}
+PROMIS_combined_df$Role <- ifelse(substr(PROMIS_combined_df$Inst, 1, 3) == "pat", "patient", 
+                                  ifelse(substr(PROMIS_combined_df$Inst, 1, 3) == "cg_", "caregiver", NA))
+
+```
+
+
+```{r}
+PROMIS_combined_df$Inst_clean <- sub("^(pat_|cg_)combined_", "", PROMIS_combined_df$Inst)
+
+```
+
+
+```{r}
+
+# RawScore
+ggplot(PROMIS_combined_df, aes(x = factor(Assmnt), y = RawScore, fill = Role)) +
+  geom_boxplot() +
+  facet_wrap(~Role) +
+  labs(title = "RawScore Comparison: Patients vs Caregivers",
+       x = "Assessment", y = "Raw Score") +
+  theme_minimal()
+
+# Theta
+ggplot(PROMIS_combined_df, aes(x = factor(Assmnt), y = Theta, fill = Role)) +
+  geom_boxplot() +
+  facet_wrap(~Role) +
+  labs(title = "Theta Comparison: Patients vs Caregivers",
+       x = "Assessment", y = "Theta") +
+  theme_minimal()
+
+# TScore
+ggplot(PROMIS_combined_df, aes(x = factor(Assmnt), y = TScore, fill = Role)) +
+  geom_boxplot() +
+  facet_wrap(~Role) +
+  labs(title = "TScore Comparison: Patients vs Caregivers",
+       x = "Assessment", y = "T-Score") +
+  theme_minimal()
+
+```
+
+```{r}
+# RawScore
+ggplot(PROMIS_combined_df, aes(x = RawScore, fill = Role)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~Assmnt) +
+  labs(title = "RawScore Distribution: Patients vs Caregivers",
+       x = "Raw Score", y = "Density") +
+  theme_minimal()
+
+# Theta
+ggplot(PROMIS_combined_df, aes(x = Theta, fill = Role)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~Assmnt) +
+  labs(title = "Theta Distribution: Patients vs Caregivers",
+       x = "Theta", y = "Density") +
+  theme_minimal()
+
+# TScore
+ggplot(PROMIS_combined_df, aes(x = TScore, fill = Role)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~Assmnt) +
+  labs(title = "TScore Distribution: Patients vs Caregivers",
+       x = "T-Score", y = "Density") +
+  theme_minimal()
+```
+```{r}
+ggplot(PROMIS_combined_df, aes(x = Theta, y = TScore, color = Role)) +
+  geom_point(alpha = 0.5) +
+  facet_wrap(~Assmnt) +
+  labs(title = "Theta vs TScore: Patients and Caregivers",
+       x = "Theta", y = "T-Score") +
+  theme_minimal()
+```
+```{r}
+library(ggplot2)
+library(dplyr)
+
+PROMIS_combined_df %>%
+  group_by(Assmnt, Role) %>%
+  summarize(mean_RawScore = mean(RawScore),
+            mean_Theta = mean(Theta),
+            mean_TScore = mean(TScore),
+            .groups = "drop") %>%
+  pivot_longer(cols = c(mean_RawScore, mean_Theta, mean_TScore),
+               names_to = "Measure", 
+               values_to = "Value") %>%
+  ggplot(aes(x = Assmnt, y = Value, color = Role, group = Role)) +
+  geom_line() +
+  geom_point() +
+  facet_wrap(~Measure, scales = "free_y") +
+  labs(title = "Mean Scores Across Assessments",
+       x = "Assessment", y = "Score") +
+  theme_minimal()
+```
+```{r}
+library(ggplot2)
+library(dplyr)
+
+PROMIS_combined_df %>%
+  group_by(Assmnt, Role) %>%
+  summarize(
+    mean_RawScore = mean(RawScore),
+    se_RawScore = sd(RawScore) / sqrt(n()),
+    mean_Theta = mean(Theta),
+    se_Theta = sd(Theta) / sqrt(n()),
+    mean_TScore = mean(TScore),
+    se_TScore = sd(TScore) / sqrt(n()),
+    .groups = "drop"
+  ) %>%
+  pivot_longer(
+    cols = c(mean_RawScore, mean_Theta, mean_TScore, 
+             se_RawScore, se_Theta, se_TScore),
+    names_to = c(".value", "Measure"),
+    names_pattern = "(mean|se)_(.*)"
+  ) %>%
+  mutate(
+    lower_ci = mean - 1.96 * se,
+    upper_ci = mean + 1.96 * se
+  ) %>%
+  ggplot(aes(x = Assmnt, y = mean, color = Role, group = Role)) +
+  geom_line() +
+  geom_point() +
+  geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci), width = 0.2) +
+  facet_wrap(~Measure, scales = "free_y") +
+  labs(title = "Mean Scores Across Assessments with 95% CI",
+       x = "Assessment", y = "Score") +
+  theme_minimal()
+```
+```{r}
+# library(ggplot2)
+# library(dplyr)
+# library(tidyr)
+# library(purrr)
+# 
+# # First, let's identify the Inst_clean categories where both roles are present
+# inst_both_roles <- PROMIS_combined_df %>%
+#   group_by(Inst_clean) %>%
+#   summarize(roles = n_distinct(Role)) %>%
+#   filter(roles == 2) %>%
+#   pull(Inst_clean)
+# 
+# # Function to create plot for a specific measure and Inst_clean
+# create_plot <- function(data, measure, inst) {
+#   ggplot(data, aes(x = factor(Assmnt), y = !!sym(measure), fill = Role)) +
+#     geom_boxplot() +
+#     facet_wrap(~ Role, ncol = 2) +
+#     labs(title = paste(measure, "for", inst),
+#          x = "Assessment",
+#          y = measure) +
+#     theme_minimal() +
+#     theme(axis.text.x = element_text(angle = 45, hjust = 1),
+#           plot.title = element_text(size = 10))
+# }
+# 
+# # Create plots for each measure and each Inst_clean
+# plots <- inst_both_roles %>%
+#   set_names() %>%
+#   map(function(inst) {
+#     data <- PROMIS_combined_df %>% 
+#       filter(Inst_clean == inst)
+#     
+#     list(
+#       RawScore = create_plot(data, "RawScore", inst),
+#       Theta = create_plot(data, "Theta", inst),
+#       TScore = create_plot(data, "TScore", inst),
+#       SE = create_plot(data, "SE", inst)
+#     )
+#   })
+# 
+# # Function to save plots
+# save_plots <- function(plot_list, inst) {
+#   for (measure in names(plot_list)) {
+#     ggsave(
+#       filename = paste0(make.names(inst), "_", measure, ".png"),
+#       plot = plot_list[[measure]],
+#       width = 10,
+#       height = 6,
+#       units = "in",
+#       dpi = 300
+#     )
+#   }
+# }
+# 
+# # Save all plots
+# walk2(plots, names(plots), save_plots)
+
+# If you want to display plots in R, you can use:
+# plots[["Your_Specific_Inst_Clean"]][["Your_Specific_Measure"]]
+# For example:
+# plots[["29.2_Anxiety - Anxiety/Fear"]][["RawScore"]]
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# # Function to create plot for a specific Inst_clean
+# create_mean_ci_plot <- function(data, inst) {
+#   data %>%
+#     group_by(Assmnt, Role) %>%
+#     summarize(
+#       mean_RawScore = mean(RawScore, na.rm = TRUE),
+#       se_RawScore = sd(RawScore, na.rm = TRUE) / sqrt(n()),
+#       mean_Theta = mean(Theta, na.rm = TRUE),
+#       se_Theta = sd(Theta, na.rm = TRUE) / sqrt(n()),
+#       mean_TScore = mean(TScore, na.rm = TRUE),
+#       se_TScore = sd(TScore, na.rm = TRUE) / sqrt(n()),
+#       .groups = "drop"
+#     ) %>%
+#     pivot_longer(
+#       cols = c(mean_RawScore, mean_Theta, mean_TScore, se_RawScore, se_Theta, se_TScore),
+#       names_to = c(".value", "Measure"),
+#       names_pattern = "(mean|se)_(.*)"
+#     ) %>%
+#     mutate(
+#       lower_ci = mean - 1.96 * se,
+#       upper_ci = mean + 1.96 * se
+#     ) %>%
+#     ggplot(aes(x = Assmnt, y = mean, color = Role, group = Role)) +
+#     geom_line() +
+#     geom_point() +
+#     geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci), width = 0.2) +
+#     facet_wrap(~Measure, scales = "free_y", ncol = 3) +
+#     labs(title = paste("Mean Scores Across Assessments with 95% CI for", inst),
+#          x = "Assessment", y = "Score") +
+#     theme_minimal() +
+#     theme(plot.title = element_text(size = 10),
+#           axis.text.x = element_text(angle = 45, hjust = 1))
+# }
+# 
+# # Identify Inst_clean categories where both roles are present
+# inst_both_roles <- PROMIS_combined_df %>%
+#   group_by(Inst_clean) %>%
+#   summarize(roles = n_distinct(Role)) %>%
+#   filter(roles == 2) %>%
+#   pull(Inst_clean)
+# 
+# # Create and save plots for each Inst_clean
+# for (inst in inst_both_roles) {
+#   data <- PROMIS_combined_df %>% 
+#     filter(Inst_clean == inst)
+#   
+#   plot <- create_mean_ci_plot(data, inst)
+#   
+#   ggsave(
+#     filename = paste0(make.names(inst), "_mean_scores_CI.png"),
+#     plot = plot,
+#     width = 12,
+#     height = 6,
+#     units = "in",
+#     dpi = 300
+#   )
+# }
+
+# To display a specific plot in R, use:
+# create_mean_ci_plot(PROMIS_combined_df %>% filter(Inst_clean == "Your_Specific_Inst_Clean"), "Your_Specific_Inst_Clean")
+```
+
+
+
+```{r}
+# library(ggplot2)
+# library(dplyr)
+# library(tidyr)
+# 
+# # Function to create density plot for a specific Inst_clean with separate x-axis scales
+# create_density_plot <- function(data, inst) {
+#   data %>%
+#     pivot_longer(cols = c(RawScore, Theta, TScore), names_to = "Measure", values_to = "Value") %>%
+#     ggplot(aes(x = Value, fill = Role)) +
+#     geom_density(alpha = 0.5) +
+#     facet_grid(Measure ~ Assmnt, scales = "free") +
+#     labs(title = paste("Density Plots for", inst),
+#          x = "Value", y = "Density") +
+#     theme_minimal() +
+#     theme(plot.title = element_text(size = 10),
+#           axis.text.x = element_text(angle = 45, hjust = 1),
+#           strip.text = element_text(size = 8)) +
+#     scale_x_continuous(labels = scales::number_format(accuracy = 0.1))
+# }
+# 
+# # Identify Inst_clean categories where both roles are present
+# inst_both_roles <- PROMIS_combined_df %>%
+#   group_by(Inst_clean) %>%
+#   summarize(roles = n_distinct(Role)) %>%
+#   filter(roles == 2) %>%
+#   pull(Inst_clean)
+# 
+# # Create and save density plots for each Inst_clean
+# for (inst in inst_both_roles) {
+#   data <- PROMIS_combined_df %>% 
+#     filter(Inst_clean == inst)
+#   
+#   plot <- create_density_plot(data, inst)
+#   
+#   ggsave(
+#     filename = paste0(make.names(inst), "_density_plots_separate_scales.png"),
+#     plot = plot,
+#     width = 12,
+#     height = 8,
+#     units = "in",
+#     dpi = 300
+#   )
+# }
+
+# To display a specific density plot in R, use:
+# create_density_plot(PROMIS_combined_df %>% filter(Inst_clean == "Your_Specific_Inst_Clean"), "Your_Specific_Inst_Clean")
+```
+
