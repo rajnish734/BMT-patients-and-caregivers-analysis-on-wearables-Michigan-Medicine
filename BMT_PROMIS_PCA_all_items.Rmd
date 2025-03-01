@@ -1,0 +1,481 @@
+---
+title: "BMT_PROMIS_PCA_all_items"
+author: "Rajnish Kumar"
+date: "2024-09-05"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+Find the scores of the first few components, don't separate any negative or positive items. Do it on the t-score value, and not on the raw score. Then we will try to do some regression analysis with sleep variables. Also, pick names of the columns that are small enough for display. Remove all the data points from the biplot to make it more presentable.  
+
+```{r}
+library(readr)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+```
+
+
+
+```{r}
+IDs <- read.csv('C:\\Users\\rajnishk\\University of Michigan Dropbox\\Rajnish Kumar\\Rajnish_data_group\\R_codes_BMT\\Roadmap 2.0 BMT_roadmapIDs_10.11.2023.csv')
+IDs_adult_cohort <- IDs %>% filter(cohort != "Peds")
+IDs_adult_cohort_all <- na.omit(IDs_adult_cohort, cols = c("pt_rm_access_code", "cg_rm_access_code"))
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+# Set the main folder path
+main_folder <- "C:/Users/rajnishk/University of Michigan Dropbox/Rajnish Kumar/Rajnish_data_group/R_codes_BMT/PROMIS table uploaded"
+
+# Define subfolders
+subfolders <- c("CG", "PAT")
+
+# Function to read CSV files
+read_csv_file <- function(file_path, group) {
+  # Extract file name without extension
+  file_name <- tools::file_path_sans_ext(basename(file_path))
+  
+  # Read the CSV file, skipping the first 4 rows
+  df <- read_csv(file_path, skip = 4, col_names = TRUE)
+  
+  # Create the data frame name
+  df_name <- paste0(file_name, "_", group)
+  
+  # Add a new column with the data frame name
+  df <- df %>% mutate(Source = df_name)
+  
+  # Return the data frame
+  return(df)
+}
+
+# List to store all data frames
+all_dfs <- list()
+
+# Loop through each subfolder
+for (subfolder in subfolders) {
+  # Construct the full path to the subfolder
+  folder_path <- file.path(main_folder, subfolder)
+  
+  # Get all CSV files in the subfolder
+  csv_files <- list.files(folder_path, pattern = "\\.csv$", full.names = TRUE)
+  
+  # Read each CSV file and add to the list
+  for (file in csv_files) {
+    df <- read_csv_file(file, subfolder)
+    all_dfs <- c(all_dfs, list(df))
+  }
+}
+
+# Combine all data frames into one
+PROMIS_combined_df <- bind_rows(all_dfs)
+
+# Print the structure of the combined data frame
+str(PROMIS_combined_df)
+
+# Print the first few rows of the combined data frame
+print(head(PROMIS_combined_df))
+
+# Print unique values in the Source column
+print(unique(PROMIS_combined_df$Source))
+``` 
+```{r}
+PROMIS_combined_df$Role <- ifelse(substr(PROMIS_combined_df$Inst, 1, 3) == "pat", "patient", 
+                                  ifelse(substr(PROMIS_combined_df$Inst, 1, 3) == "cg_", "caregiver", NA))
+```
+
+
+```{r}
+library(dplyr)
+
+# Create a lookup table
+lookup_table <- bind_rows(
+  IDs_adult_cohort_all %>% select(PIN = pt_rm_access_code, cg_arm),
+  IDs_adult_cohort_all %>% select(PIN = cg_rm_access_code, cg_arm)
+)
+
+# Add the new column to PROMIS_combined_df
+PROMIS_combined_df <- PROMIS_combined_df %>%
+  left_join(lookup_table, by = "PIN")
+```
+
+
+
+```{r}
+PROMIS_combined_df$Inst_clean <- sub("^(pat_|cg_)combined_", "", PROMIS_combined_df$Inst)
+```
+
+
+```{r}
+Inst_names <- data.frame(unique(PROMIS_combined_df$Inst))
+```
+
+   cg_Social Roles/Activities
+                                                          cg_Anxiety/Fear
+                                         cg_Cognitive Function
+                                                 cg_Depression/Sadness
+                                                              cg_Fatigue
+                                           cg_Pain Interference
+                                           cg_Physical Function
+                                           cg_Sleep Disturbance
+                                                             cg_Companionship_4a - Other
+                                                cg_Global Mental Health
+                                              cg_Global Physical Health
+                                                   cg_caregiver_anxiety - Emotion
+                                                   cg_caregiver_strain - Emotion
+                    cg_Positive Affect & Well-Being
+                                      cg_Daily Activities - Self-Efficacy
+                                     cg_Managing Symptoms - Self-Efficacy
+                                       cg_Emotional Support
+ pat_Social Roles/Activities
+                                                        pat_Anxiety/Fear
+                                       pat_Cognitive Function
+                                               pat_Depression/Sadness
+                                                             pat_Fatigue
+                                         pat_Pain Interference
+                                         pat_Physical Function
+                                         pat_Sleep Disturbance
+                                                           pat_Companionship_4a - Other
+                                               pat_Global Mental Health
+                                            pat_Global Physical Health
+                    pat_Positive Affect & Well-Being
+                                     pat_Daily Activities - Self-Efficacy
+                                    pat_Managing Symptoms - Self-Efficacy
+                                      pat_Emotional Support
+
+```{r}
+new_Inst_names <- c(
+  "cg_Social Roles/Activities",
+  "cg_Anxiety/Fear",
+  "cg_Cognitive Function",
+  "cg_Depression/Sadness",
+  "cg_Fatigue",
+  "cg_Pain Interference",
+  "cg_Physical Function",
+  "cg_Sleep Disturbance",
+  "cg_Companionship_4a - Other",
+  "cg_Global Mental Health",
+  "cg_Global Physical Health",
+  "cg_caregiver_anxiety - Emotion",
+  "cg_caregiver_strain - Emotion",
+  "cg_Positive Affect & Well-Being",
+  "cg_Daily Activities - Self-Efficacy",
+  "cg_Managing Symptoms - Self-Efficacy",
+  "cg_Emotional Support",
+  "pat_Social Roles/Activities",
+  "pat_Anxiety/Fear",
+  "pat_Cognitive Function",
+  "pat_Depression/Sadness",
+  "pat_Fatigue",
+  "pat_Pain Interference",
+  "pat_Physical Function",
+  "pat_Sleep Disturbance",
+  "pat_Companionship_4a - Other",
+  "pat_Global Mental Health",
+  "pat_Global Physical Health",
+  "pat_Positive Affect & Well-Being",
+  "pat_Daily Activities - Self-Efficacy",
+  "pat_Managing Symptoms - Self-Efficacy",
+  "pat_Emotional Support"
+)
+
+# Add the new column to the data frame
+Inst_names$new_Inst_names <- new_Inst_names
+```
+
+Add these values the new instant names, and make them as columns. You can do PCA on them after that. 
+
+```{r}
+print("for data frame PROMIS_combined_df:")
+# Step 1: Identify character columns
+chr_columns <- sapply(PROMIS_combined_df, is.character)
+
+# Step 2 and 3: Loop through these columns and print the number of unique values
+for (column_name in names(PROMIS_combined_df)[chr_columns]) {
+  num_unique_values <- length(unique(PROMIS_combined_df[[column_name]]))
+  cat("Column:", column_name, "- Unique values:", num_unique_values, "\n")
+}
+
+print("for data frame Inst_names:")
+# Step 1: Identify character columns
+chr_columns <- sapply(Inst_names, is.character)
+
+# Step 2 and 3: Loop through these columns and print the number of unique values
+for (column_name in names(Inst_names)[chr_columns]) {
+  num_unique_values <- length(unique(Inst_names[[column_name]]))
+  cat("Column:", column_name, "- Unique values:", num_unique_values, "\n")
+}
+```
+```{r}
+are_equal <- setequal(unique(Inst_names$unique.PROMIS_combined_df.Inst.),
+                      unique(PROMIS_combined_df$Inst))
+
+print(are_equal)
+```
+```{r}
+library(dplyr)
+
+PROMIS_combined_df <- PROMIS_combined_df %>%
+  left_join(Inst_names, 
+            by = c("Inst" = "unique.PROMIS_combined_df.Inst.")) %>%
+  relocate(new_Inst_names, .after = Inst)
+```
+
+```{r}
+
+```
+
+Doing PCA on the TScore. In this case all of the items will be combined.
+
+```{r}
+
+```
+
+```{r}
+# Create a new column called 'generic_Inst_names'
+PROMIS_combined_df$generic_Inst_names <- sub("^(cg_|pat_)", "", PROMIS_combined_df$new_Inst_names)
+```
+
+```{r}
+# Create the new column
+PROMIS_combined_df$generic_Inst_names <- sub("^(cg_|pat_)", "", PROMIS_combined_df$new_Inst_names)
+
+# Reorder columns
+col_order <- c(colnames(PROMIS_combined_df)[1:which(colnames(PROMIS_combined_df) == "new_Inst_names")],
+               "generic_Inst_names",
+               colnames(PROMIS_combined_df)[(which(colnames(PROMIS_combined_df) == "new_Inst_names") + 1):
+                                            (ncol(PROMIS_combined_df) - 1)])
+PROMIS_combined_df <- PROMIS_combined_df[, col_order]
+```
+
+```{r}
+head(PROMIS_combined_df[, c("new_Inst_names", "generic_Inst_names")])
+```
+```{r}
+PROMIS_combined_df_Tscore <- subset(PROMIS_combined_df, select = -c(RawScore,Theta, SE, ScrdCnt, ItmCnt))
+```
+
+```{r}
+library(tidyr)
+library(dplyr)
+
+# Create the new dataframe
+df_Tscore_4_PCA <- PROMIS_combined_df_Tscore %>%
+  # Select only the columns we need
+  select(PIN, Assmnt, TScore, Role, generic_Inst_names) %>%
+  # Reshape the data
+  pivot_wider(
+    id_cols = c(PIN, Assmnt, Role),
+    names_from = generic_Inst_names,
+    values_from = TScore
+  )
+```
+
+Do the PCA on Tscores for all the items. I need to confirm what is happening with the caregiver anxiety columns in the patient side of PCA. 
+
+```{r}
+# Load required libraries
+library(tidyverse)
+library(factoextra)
+
+# Function to perform PCA and generate plots
+perform_pca_and_plot <- function(data, role) {
+  # Select only numeric columns for PCA, excluding specified columns
+  numeric_cols <- sapply(data, is.numeric)
+  data_for_pca <- data[, numeric_cols]
+  # data_for_pca <- data_for_pca %>%
+  #   select(-c("caregiver_anxiety - Emotion", "caregiver_strain - Emotion"))
+  
+  # Remove rows with any missing values
+  data_for_pca <- data_for_pca[complete.cases(data_for_pca), ]
+  
+  # Perform PCA
+  pca_result <- prcomp(data_for_pca, center = TRUE, scale. = TRUE)
+  
+  # Print summary of PCA results
+  cat("\nPCA Summary for", role, ":\n")
+  print(summary(pca_result))
+  
+  # 1. Scree Plot
+  p1 <- fviz_eig(pca_result, main = paste("Scree Plot -", role))
+  
+  # 2. Biplot
+  p2 <- fviz_pca_biplot(pca_result, label = "var", title = paste("Biplot -", role))
+  
+  # 3. Variable Plot
+  p3 <- fviz_pca_var(pca_result, title = paste("Variable Plot -", role))
+  
+  # 4. Cumulative Variance Plot
+  var_explained <- pca_result$sdev^2 / sum(pca_result$sdev^2)
+  cumulative_var <- cumsum(var_explained)
+  p4 <- ggplot(data.frame(cumulative_var, pc = 1:length(cumulative_var)), aes(x = pc, y = cumulative_var)) +
+    geom_point() + geom_line() +
+    xlab("Number of Components") + ylab("Cumulative Proportion of Variance Explained") +
+    ggtitle(paste("Cumulative Variance Explained -", role))
+  
+  # 5. Correlation Circle
+  p5 <- fviz_pca_var(pca_result, col.var = "contrib", 
+               gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+               repel = TRUE, 
+               title = paste("Correlation Circle -", role))
+  
+  # Print loadings
+  cat("\nPCA Loadings for", role, ":\n")
+  print(pca_result$rotation)
+  
+  # Print variance explained
+  cat("\nVariance explained by each PC for", role, ":\n")
+  print(var_explained)
+  
+  # Return plots and pca_result
+  list(
+    scree = p1, 
+    biplot = p2, 
+    var_plot = p3, 
+    cum_var = p4, 
+    corr_circle = p5,
+    pca_result = pca_result,  # Add this line to include pca_result in the returned list
+    var_explained = var_explained  # Optionally, you can also return var_explained
+  )
+}
+
+```
+
+```{r}
+# Split data by role
+caregiver_data <- df_Tscore_4_PCA %>% filter(Role == "caregiver")
+patient_data <- df_Tscore_4_PCA %>% filter(Role == "patient")
+
+caregiver_data <- caregiver_data %>% select(-Assmnt, )
+patient_data <- patient_data%>% select(-c("Assmnt","caregiver_anxiety - Emotion", "caregiver_strain - Emotion"))
+
+
+
+```
+
+
+```{r}
+# Create a named vector for the renaming
+new_names <- c(
+  "Social Roles/Activities" = "SA",
+  "Anxiety/Fear" = "AF",
+  "Cognitive Function" = "CF",
+  "Depression/Sadness" = "DS",
+  "Fatigue" = "F",
+  "Pain Interference" = "PI",
+  "Physical Function" = "PF",
+  "Sleep Disturbance" = "SD",
+  "Companionship_4a - Other" = "C4",
+  "Global Mental Health" = "GMH",
+  "Global Physical Health" = "GPH",
+  "caregiver_anxiety - Emotion" = "CGA",
+  "caregiver_strain - Emotion" = "CGS",
+  "Positive Affect & Well-Being" = "PW",
+  "Daily Activities - Self-Efficacy" = "DAS",
+  "Managing Symptoms - Self-Efficacy" = "MSS",
+  "Emotional Support" = "ES"
+)
+
+# Function to rename columns
+rename_columns <- function(df, new_names) {
+  # Get current column names
+  current_names <- colnames(df)
+  
+  # Find which names need to be changed
+  to_change <- current_names %in% names(new_names)
+  
+  # Replace the names that need to be changed
+  current_names[to_change] <- new_names[current_names[to_change]]
+  
+  # Set the new column names
+  colnames(df) <- current_names
+  
+  return(df)
+}
+
+# Apply the function to both data frames
+caregiver_data <- rename_columns(caregiver_data, new_names)
+patient_data <- rename_columns(patient_data, new_names)
+
+# Print the new column names to verify
+print(colnames(caregiver_data))
+print(colnames(patient_data))
+```
+
+
+```{r}
+
+```
+
+
+
+```{r}
+# Perform PCA for caregivers
+caregiver_plots <- perform_pca_and_plot(caregiver_data, "Caregiver")
+
+# Perform PCA for patients
+patient_plots <- perform_pca_and_plot(patient_data, "Patient")
+
+caregiver_pca_result <- caregiver_plots$pca_result
+patient_pca_result <- patient_plots$pca_result
+
+# Display plots side by side
+library(gridExtra)
+
+# Scree plots
+grid.arrange(caregiver_plots$scree, patient_plots$scree, ncol = 2)
+
+# Biplots
+grid.arrange(caregiver_plots$biplot, patient_plots$biplot, ncol = 2)
+
+# Variable plots
+grid.arrange(caregiver_plots$var_plot, patient_plots$var_plot, ncol = 2)
+
+# Cumulative variance plots
+grid.arrange(caregiver_plots$cum_var, patient_plots$cum_var, ncol = 2)
+
+# Correlation circles
+grid.arrange(caregiver_plots$corr_circle, patient_plots$corr_circle, ncol = 2)
+```
+
+code of column names repeated here for reference:                              
+ 
+ "Social Roles/Activities"            - SA      
+ "Anxiety/Fear"                       - AF                  
+ "Cognitive Function"                 - CF             
+ "Depression/Sadness"                 - DS              
+ "Fatigue"                            - F                         
+ "Pain Interference"                  - PI            
+ "Physical Function"                  - PF             
+  "Sleep Disturbance"                 - SD             
+"Companionship_4a - Other"            - C4      
+"Global Mental Health"                - GMH      
+"Global Physical Health"              - GPH      
+"caregiver_anxiety - Emotion"         - CGA     
+ "caregiver_strain - Emotion"         - CGS    
+"Positive Affect & Well-Being"        - PW   
+"Daily Activities - Self-Efficacy"    - DAS
+"Managing Symptoms - Self-Efficacy"   - MSS
+"Emotional Support"                   - ES
+
+```{r}
+
+
+
+```
+
+
+
+
