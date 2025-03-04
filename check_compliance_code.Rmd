@@ -1,0 +1,131 @@
+---
+title: "check_compliance_code"
+author: "Rajnish Kumar"
+date: "2024-06-06"
+output: html_document
+---
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r}
+df_steps <-read.csv('C:\\Users\\rajnishk\\OneDrive - Michigan Medicine\\Desktop\\compliance_check_group\\compliance_chek_group_steps.csv')
+df_HR <-read.csv('C:\\Users\\rajnishk\\OneDrive - Michigan Medicine\\Desktop\\compliance_check_group\\compliance_chk_grouop_HR.csv')
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+df_steps$STUDY_METRIC_MSR_START_DT <- as.POSIXct(df_steps$STUDY_METRIC_MSR_START_DT, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+df_steps$STUDY_METRIC_MSR_END_DT <- as.POSIXct(df_steps$STUDY_METRIC_MSR_END_DT, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+
+df_HR$STUDY_METRIC_MSR_START_DT <-as.POSIXct(df_HR$STUDY_METRIC_MSR_START_DT, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+df_HR$STUDY_METRIC_MSR_END_DT <-as.POSIXct(df_HR$STUDY_METRIC_MSR_END_DT, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+
+```
+
+```{r}
+Patient_DVCs <- Patient_DVCs <- c(1558, 1561, 1563, 1572, 1577, 1613, 1616, 1650)
+```
+
+
+
+```{r}
+filtered_steps <- df_steps %>% filter(STUDY_METRIC_TYP_ID != 2)
+```
+
+```{r}
+steps_summary <- filtered_steps %>%
+  mutate(Date = as.Date(STUDY_METRIC_MSR_START_DT)) %>%
+  group_by(PRTCPT_DVC_ID, Date, STUDY_METRIC_TYP_ID) %>%
+  summarise(Count = n()) %>%
+  ungroup() %>%
+  pivot_wider(names_from = STUDY_METRIC_TYP_ID, values_from = Count, values_fill = 0)
+
+```
+
+```{r}
+HR_minutes <- df_HR %>%
+  mutate(
+    Minute = floor_date(STUDY_METRIC_MSR_START_DT, "minute"),
+    Date = as.Date(STUDY_METRIC_MSR_START_DT)
+  )
+
+# Remove duplicates based on PRTCPT_DVC_ID, Date, and Minute
+HR_minutes_unique <- HR_minutes %>%
+  distinct(PRTCPT_DVC_ID, Date, Minute, .keep_all = TRUE)
+```
+
+```{r}
+
+
+# Count the number of entries for each patient and day
+HR_summary <- HR_minutes_unique %>%
+  group_by(PRTCPT_DVC_ID, Date) %>%
+  summarise(HR_Count = n())
+# Set the threshold for the number of HR entries per day
+threshold <- 100
+# Create a compliance filter based on the threshold
+compliance_filter <- HR_summary %>%
+  group_by(PRTCPT_DVC_ID) %>%
+  summarise(Compliant = all(HR_Count >= threshold))
+# Compute heart rate metrics for each patient and day
+HR_summary <- HR_minutes_unique %>%
+  group_by(PRTCPT_DVC_ID, Date) %>%
+  summarise(
+    HR_Count = n(),
+    HR_Mean = mean(STUDY_METRIC_MSR_VAL),
+    HR_SD = sd(STUDY_METRIC_MSR_VAL),
+    Rate_diff1_mean = mean(abs(diff(STUDY_METRIC_MSR_VAL))),
+    Rate_diff2_mean = mean(abs(diff(STUDY_METRIC_MSR_VAL, lag = 2))),
+    Rate_range = max(STUDY_METRIC_MSR_VAL) - min(STUDY_METRIC_MSR_VAL),
+    Rate_data_entropy = -sum(table(STUDY_METRIC_MSR_VAL) / HR_Count * log(table(STUDY_METRIC_MSR_VAL) / HR_Count)),
+    Max_ratio = max(STUDY_METRIC_MSR_VAL) / HR_Count,
+    Min_ratio = min(STUDY_METRIC_MSR_VAL) / HR_Count
+  )
+HR_summary$Group <- ifelse(HR_summary$PRTCPT_DVC_ID %in% Patient_DVCs, "Patients",
+                                   ifelse(HR_summary$PRTCPT_DVC_ID %in% Caregiver_DVCs,
+                                          "Caregivers", "Other"))
+# Add a compliance column based on the threshold
+HR_summary$Compliant <- HR_summary$HR_Count >= threshold
+# Set the threshold for the number of HR entries per day
+threshold <- 1152
+# Create a compliance filter based on the threshold
+compliance_filter <- HR_summary %>%
+  group_by(PRTCPT_DVC_ID) %>%
+  summarise(Compliant = all(HR_Count >= threshold))
+```
+```{r}
+HR_summary$percent_wear <- HR_summary$HR_Count/14.4 
+```
+
+```{r}
+df_1558  <- HR_summary %>% filter(PRTCPT_DVC_ID == 1558)
+df_1561  <- HR_summary %>% filter(PRTCPT_DVC_ID == 1561)
+df_1563  <- HR_summary %>% filter(PRTCPT_DVC_ID == 1563)
+df_1572  <- HR_summary %>% filter(PRTCPT_DVC_ID == 1572)
+
+df_1577  <- HR_summary %>% filter(PRTCPT_DVC_ID == 1577)
+
+
+
+```
+
