@@ -1,0 +1,107 @@
+---
+title: "check_overlaps_bmt_fitbit_measurements"
+author: "Rajnish Kumar"
+date: "2024-06-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+We can plot the measurements for each of the participants with x axis being time, and see if there are overlaps between these participants. 
+
+```{r}
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(ggplot2)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r}
+df_IDs <- read.csv("C:\\Users/rajnishk/Dropbox (University of Michigan)/Rajnish_data_group/BMT_fitbit_participants_pair.csv")
+
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+device_counts <- table(df_IDs$STUDY_PRTCPT_ID, useNA = "no")
+
+```
+
+```{r}
+sorted_frequency <- sort(device_counts, decreasing = TRUE)
+frequency_df <- as.data.frame(sorted_frequency)
+
+# Name the columns accordingly
+names(frequency_df) <- c("Value", "Frequency")
+
+```
+
+There are not always the pairs. 4UDRUW84 has 5 devices, but it's dyad has just one. So multiple devices don't necessarily come in pair. 
+
+I am picking top 10 highest counts participants, and will download their heartrate and steps and see what it looks like.  
+
+"CFI9I6K2", "PF1BLPH4", "4UDRUW84", "B51FUYGC", "FRSQKIQF", "U82WP671", "BNI9GAY5", "IUPUFELI", "M6WWDSQA", "SVIXFL83"
+
+```{r}
+top_values <- frequency_df$Value[1:10]
+
+selected_participants_IDs <- df_IDs[df_IDs$STUDY_PRTCPT_ID %in% top_values, ]
+```
+This is a list of 150 fitbits. Reading the heart rate of these participants. 
+
+```{r}
+df_HR_top_10_prtcpt <- read.csv("C:\\Users/rajnishk/Dropbox (University of Michigan)/Rajnish_data_group/data paper BMT personal progress/top_10_particpants_with_multiple_fitibts_HR.csv")
+```
+
+convert both start and end times to POSIX so that I can do plotting on them.
+
+```{r}
+# Convert character date strings to POSIXct
+df_HR_top_10_prtcpt$STUDY_METRIC_MSR_START_DT <- as.POSIXct(df_HR_top_10_prtcpt$STUDY_METRIC_MSR_START_DT, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+df_HR_top_10_prtcpt$STUDY_METRIC_MSR_END_DT <- as.POSIXct(df_HR_top_10_prtcpt$STUDY_METRIC_MSR_END_DT, format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+```
+Create columns for participant IDs in the HR dataframe 
+
+```{r}
+df_HR_top_10_prtcpt <- merge(
+  x = df_HR_top_10_prtcpt,
+  y = df_IDs[c("PRTCPT_DVC_ID", "STUDY_PRTCPT_ID")],
+  by = "PRTCPT_DVC_ID",
+  all.x = TRUE # Keep all records from df_HR_top_10_prtcpt
+)
+```
+
+```{r}
+ggplot(data = df_HR_top_10_prtcpt, aes(x = STUDY_METRIC_MSR_START_DT, y = PRTCPT_DVC_ID)) +
+  geom_point(alpha = 0.5) +  # Add transparency with alpha
+  theme_bw() +
+  xlab("Study Metric Measurement Start Date") +
+  ylab("Participant Device ID") +
+  ggtitle("Plot of Participant Device ID over Time") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels
+```
+```{r}
+ggplot(data = df_HR_top_10_prtcpt, aes(x = STUDY_METRIC_MSR_START_DT, y = PRTCPT_DVC_ID, color = STUDY_PRTCPT_ID)) +
+  geom_point() +
+  theme_bw() +
+  xlab("Study Metric Measurement Start Date") +
+  ylab("Participant Device ID") +
+  ggtitle("Plot of Participant Device ID over Time by Study Participant ID") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_color_viridis_d()  # Optional: Use the viridis color palette for better color distinction
+```
+
