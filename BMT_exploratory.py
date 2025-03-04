@@ -22,10 +22,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Enfore the DSN String has the service_name field instead of the SID
-dsnStr = cx_Oracle.makedsn("rmap.mcit.med.umich.edu", "1521", service_name="RMAP.WORLD")
+dsnStr = cx_Oracle.makedsn("abcd.abcd.med.umich.edu", "1521", service_name="abcd.abcd")
 connection = oracledb.connect(
-    user="rajnishk",
-    password="DU8RN7WE",
+    user="userrname",
+    password="password",
     dsn=dsnStr
 )
 
